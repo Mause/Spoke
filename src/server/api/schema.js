@@ -764,6 +764,27 @@ const rootMutations = {
 
       return await Organization.get(organizationId);
     },
+    exportToCivi: async (_, { campaignId }, { user, loaders }) => {
+      const campaign = await loaders.campaign.load(campaignId);
+      if (!campaign) {
+        throw new GraphQLError("Unknown campaign");
+      }
+
+      await accessRequired(user, campaign.organization_id, "ADMIN", true);
+
+      const jr = await jobRunner.dispatchJob({
+        payload: JSON.stringify({}),
+        queue_name: "export_to_civicrm", // TODO: what is the significance of this?
+        job_type: Jobs.EXPORT_TO_CIVICRM,
+        organization_id: campaign.organization_id,
+        locks_queue: false,
+        campaign_id: campaignId
+      });
+
+      console.log(jr);
+
+      return jr;
+    },
     createInvite: async (_, { user }) => {
       if (
         (user && user.is_superadmin) ||

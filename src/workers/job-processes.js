@@ -16,7 +16,8 @@ import {
   clearOldJobs,
   importScript,
   buyPhoneNumbers,
-  startCampaignWithPhoneNumbers
+  startCampaignWithPhoneNumbers,
+  exportContactablenessToCivicrm
 } from "./jobs";
 import { setupUserNotificationObservers } from "../server/notifications";
 
@@ -38,7 +39,8 @@ export const Jobs = Object.freeze({
   ASSIGN_TEXTERS: "assign_texters",
   IMPORT_SCRIPT: "import_script",
   BUY_PHONE_NUMBERS: "buy_phone_numbers",
-  START_CAMPAIGN_WITH_PHONE_NUMBERS: "start_campaign_with_phone_numbers"
+  START_CAMPAIGN_WITH_PHONE_NUMBERS: "start_campaign_with_phone_numbers",
+  EXPORT_TO_CIVICRM: "export_to_civicrm"
 });
 
 const jobMap = Object.freeze({
@@ -46,7 +48,8 @@ const jobMap = Object.freeze({
   [Jobs.ASSIGN_TEXTERS]: assignTexters,
   [Jobs.IMPORT_SCRIPT]: importScript,
   [Jobs.BUY_PHONE_NUMBERS]: buyPhoneNumbers,
-  [Jobs.START_CAMPAIGN_WITH_PHONE_NUMBERS]: startCampaignWithPhoneNumbers
+  [Jobs.START_CAMPAIGN_WITH_PHONE_NUMBERS]: startCampaignWithPhoneNumbers,
+  [Jobs.EXPORT_TO_CIVICRM]: exportContactablenessToCivicrm
 });
 
 export const invokeJobFunction = async job => {

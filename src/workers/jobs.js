@@ -26,6 +26,8 @@ import { sendEmail } from "../server/mail";
 import { Notifications, sendUserNotification } from "../server/notifications";
 import { getConfig } from "../server/api/lib/config";
 import { invokeTaskFunction, Tasks } from "./tasks";
+import * as _ from "lodash";
+import { getCivi } from "../extensions/contact-loaders/civicrm/util";
 
 const defensivelyDeleteOldJobsForCampaignJobType = async job => {
   console.log("job", job);
@@ -653,6 +655,63 @@ export async function assignTexters(job) {
       .table("job_request")
       .get(job.id)
       .delete();
+  }
+}
+
+export async function exportContactablenessToCivicrm(job) {
+  const id = job.campaign_id;
+  const campaign = await Campaign.get(id);
+
+  const { create } = getCivi();
+
+  // TODO: group together responses rather than creating one activity per response
+  const messages = await r
+    .knex("question_response")
+    .on("query", function(data) {
+      console.log(data);
+    })
+    .leftJoin(
+      "campaign_contact",
+      "campaign_contact.id",
+      "question_response.campaign_contact_id"
+    )
+    .leftJoin(
+      "interaction_step",
+      "interaction_step.id",
+      "question_response.interaction_step_id"
+    )
+    .select(
+      "interaction_step.question",
+      "question_response.value",
+      "campaign_contact.external_id"
+    )
+    .where("campaign_contact.campaign_id", id);
+
+  const grouped = _.chain(messages)
+    .groupBy("external_id")
+    .map((messages, external_id) => [
+      external_id,
+      messages
+        .map(message => message.question + " " + message.value)
+        .join("<br/>")
+    ])
+    .value();
+
+  console.log("messages: ", messages);
+  console.log("messages: ", grouped);
+
+  for (const [external_id, message] of grouped) {
+    console.log(external_id, message);
+    console.log({
+      activity: await create("Activity", {
+        target_id: external_id,
+        activity_type_id: "commslog",
+        subject: "Spoke conversation - " + campaign.title,
+        details: message,
+        status_id: "Completed",
+        source_contact_id: "user_contact_id" // user_contact_id indicates the requesting user, ie, the service account
+      })
+    });
   }
 }
 
