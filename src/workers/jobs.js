@@ -664,12 +664,8 @@ export async function exportContactablenessToCivicrm(job) {
 
   const { create } = getCivi();
 
-  // TODO: group together responses rather than creating one activity per response
   const messages = await r
     .knex("question_response")
-    .on("query", function(data) {
-      console.log(data);
-    })
     .leftJoin(
       "campaign_contact",
       "campaign_contact.id",
