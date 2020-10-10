@@ -701,7 +701,7 @@ export async function exportContactablenessToCivicrm(job) {
     console.log({
       activity: await create("Activity", {
         target_id: external_id,
-        activity_type_id: "commslog",
+        activity_type_id: "Textbank Interaction",
         subject: "Spoke conversation - " + campaign.title,
         details: message,
         status_id: "Completed",
