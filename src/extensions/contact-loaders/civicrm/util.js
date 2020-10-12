@@ -10,7 +10,7 @@ export const CUSTOM_DATA = [
   "city"
 ];
 
-function getCivi() {
+export function getCivi() {
   const domain = parse(getConfig("CIVICRM_DOMAIN"));
 
   const config = {

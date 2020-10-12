@@ -362,6 +362,7 @@ const rootSchema = gql`
     ): JobRequest
     releaseCampaignNumbers(campaignId: ID!): Campaign!
     clearCachedOrgAndExtensionCaches(organizationId: String!): String
+    exportToCivi(campaignId: ID!): JobRequest
   }
 
   schema {

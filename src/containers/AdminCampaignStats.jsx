@@ -237,6 +237,13 @@ class AdminCampaignStats extends React.Component {
                   />
                   {adminPerms
                     ? [
+                        <RaisedButton
+                          onTouchTap={async () => {
+                            await this.props.mutations.exportToCivi(campaignId);
+                          }}
+                        >
+                          Export to CIVI
+                        </RaisedButton>,
                         // Buttons for Admins (and not Supervolunteers)
                         // export
                         <RaisedButton
@@ -513,6 +520,16 @@ const mutations = {
         unarchiveCampaign(id: $campaignId) {
           id
           isArchived
+        }
+      }
+    `,
+    variables: { campaignId }
+  }),
+  exportToCivi: ownProps => campaignId => ({
+    mutation: gql`
+      mutation exportToCivi($campaignId: ID!) {
+        exportToCivi(campaignId: $campaignId) {
+          id
         }
       }
     `,
