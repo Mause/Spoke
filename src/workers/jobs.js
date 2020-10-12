@@ -662,7 +662,7 @@ export async function exportContactablenessToCivicrm(job) {
   const id = job.campaign_id;
   const campaign = await Campaign.get(id);
 
-  const { create } = getCivi();
+  const { create, get } = getCivi();
 
   const messages = await r
     .knex("question_response")
@@ -698,16 +698,25 @@ export async function exportContactablenessToCivicrm(job) {
 
   for (const [external_id, message] of grouped) {
     console.log(external_id, message);
-    console.log({
-      activity: await create("Activity", {
-        target_id: external_id,
-        activity_type_id: "Textbank Interaction",
-        subject: "Spoke conversation - " + campaign.title,
-        details: message,
-        status_id: "Completed",
-        source_contact_id: "user_contact_id" // user_contact_id indicates the requesting user, ie, the service account
-      })
-    });
+    let activity = {
+      target_id: external_id,
+      activity_type_id: "Textbank Interaction",
+      subject: `Spoke conversation - ${campaign.title} (${campaign.id})`,
+      status_id: "Completed",
+      source_contact_id: "user_contact_id" // user_contact_id indicates the requesting user, ie, the service account
+    };
+
+    const existingRecords = await get("Activity", activity);
+    if (existingRecords.length) {
+      if (existingRecords.length > 1) {
+        console.warn("This doesn't look right");
+      }
+      activity.id = existingRecords[0].id;
+    }
+
+    activity.details = message;
+
+    console.log(await create("Activity", activity));
   }
 }
 
