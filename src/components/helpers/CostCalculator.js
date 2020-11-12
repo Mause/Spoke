@@ -12,7 +12,8 @@ export function campaignCostCalculator(
   const sentTotalCost = outgoingMessageCost * sentTotal;
   const replyTotalCost = incomingMessageCost * replyTotal;
 
-  return sentTotalCost + replyTotalCost;
+  const totalCost = sentTotalCost + replyTotalCost;
+  return totalCost.toFixed(2);
 }
 
 export function getBudgetUsedPercentage(
