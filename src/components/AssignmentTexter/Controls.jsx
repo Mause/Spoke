@@ -1,35 +1,28 @@
 import PropTypes from "prop-types";
 import React from "react";
-import { StyleSheet, css } from "aphrodite";
+import { css } from "aphrodite";
 import Toolbar from "./Toolbar";
 import MessageList from "./MessageList";
-import CannedResponseMenu from "./CannedResponseMenu";
 import Survey from "./Survey";
 import ScriptList from "./ScriptList";
 import Empty from "../Empty";
 import GSForm from "../forms/GSForm";
-import RaisedButton from "material-ui/RaisedButton";
 import FlatButton from "material-ui/FlatButton";
-import IconButton from "material-ui/IconButton/IconButton";
 import { Card, CardActions, CardTitle } from "material-ui/Card";
-import Divider from "material-ui/Divider";
 import CreateIcon from "material-ui/svg-icons/content/create";
 import DownIcon from "material-ui/svg-icons/navigation/arrow-drop-down";
 import yup from "yup";
 import theme from "../../styles/theme";
 import Form from "react-formal";
 import Popover from "material-ui/Popover";
-import { messageListStyles, inlineStyles, flexStyles } from "./StyleControls";
+import { flexStyles, inlineStyles, messageListStyles } from "./StyleControls";
 
 import { renderSidebox } from "../../extensions/texter-sideboxes/components";
 
 import {
-  getChildren,
   getAvailableInteractionSteps,
-  getTopMostParent,
-  interactionStepForId,
-  log,
-  isBetweenTextingHours
+  getChildren,
+  getTopMostParent
 } from "../../lib";
 
 import { dataTest } from "../../lib/attributes";
@@ -106,7 +99,8 @@ export class AssignmentTexterContactControls extends React.Component {
 
   getStartingMessageText() {
     const { campaign, messageStatusFilter } = this.props;
-    return messageStatusFilter === "needsMessage"
+    return messageStatusFilter === "needsMessage" ||
+      messageStatusFilter === "needsMessageOrResponse"
       ? this.props.getMessageTextFromScript(
           getTopMostParent(campaign.interactionSteps).script
         )
