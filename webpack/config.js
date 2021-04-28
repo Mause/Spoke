@@ -1,14 +1,16 @@
-require("dotenv").config();
 const path = require("path");
 const webpack = require("webpack");
 const ManifestPlugin = require("webpack-manifest-plugin");
+const UglifyJsPlugin = require("uglifyjs-webpack-plugin");
 
-const DEBUG = process.env.NODE_ENV !== "production";
+const DEBUG =
+  process.env.NODE_ENV === "development" || !!process.env.WEBPACK_HOT_RELOAD;
 
 const plugins = [
   new webpack.DefinePlugin({
     "process.env.NODE_ENV": `"${process.env.NODE_ENV}"`,
-    "process.env.PHONE_NUMBER_COUNTRY": `"${process.env.PHONE_NUMBER_COUNTRY}"`
+    "process.env.PHONE_NUMBER_COUNTRY": `"${process.env.PHONE_NUMBER_COUNTRY ||
+      "US"}"`
   }),
   new webpack.ContextReplacementPlugin(
     /[\/\\]node_modules[\/\\]timezonecomplete[\/\\]/,
@@ -22,6 +24,11 @@ const jsxLoaders = [{ loader: "babel-loader" }];
 const assetsDir = process.env.ASSETS_DIR;
 const assetMapFile = process.env.ASSETS_MAP_FILE;
 const outputFile = DEBUG ? "[name].js" : "[name].[chunkhash].js";
+console.log("Configuring Webpack with", {
+  assetsDir,
+  assetMapFile,
+  outputFile
+});
 
 if (!DEBUG) {
   plugins.push(
@@ -30,7 +37,7 @@ if (!DEBUG) {
     })
   );
   plugins.push(
-    new webpack.optimize.UglifyJsPlugin({
+    new UglifyJsPlugin({
       sourceMap: true
     })
   );
@@ -41,7 +48,6 @@ if (!DEBUG) {
   );
 } else {
   plugins.push(new webpack.HotModuleReplacementPlugin());
-  jsxLoaders.unshift({ loader: "react-hot-loader" });
 }
 
 const config = {

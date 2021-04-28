@@ -1,15 +1,17 @@
 import React, { Component } from "react";
+import { Link } from "react-router";
 import type from "prop-types";
 import FlatButton from "material-ui/FlatButton";
 import loadData from "./hoc/load-data";
 import gql from "graphql-tag";
 import LoadingIndicator from "../components/LoadingIndicator";
+import ActionOpenInNew from "material-ui/svg-icons/action/open-in-new";
 import DataTables from "material-ui-datatables";
 import UserEditDialog from "../components/PeopleList/UserEditDialog";
 import ResetPasswordDialog from "../components/PeopleList/ResetPasswordDialog";
 import RolesDropdown from "../components/PeopleList/RolesDropdown";
 import { dataTest } from "../lib/attributes";
-
+import theme from "../styles/theme";
 import PeopleIcon from "material-ui/svg-icons/social/people";
 import Empty from "../components/Empty";
 
@@ -32,7 +34,7 @@ export class PeopleList extends Component {
 
     this.state = {
       open: false,
-      userEdit: undefined,
+      userEdit: null,
       pageSize: INITIAL_PAGE_SIZE,
       cursor: {
         offset: 0,
@@ -43,6 +45,7 @@ export class PeopleList extends Component {
   }
 
   prepareTableColumns = () => {
+    const { organizationId } = this.props;
     const columns = [
       {
         key: "texter",
@@ -51,7 +54,20 @@ export class PeopleList extends Component {
           textOverflow: "ellipsis",
           overflow: "hidden",
           whiteSpace: "pre-line"
-        }
+        },
+        render: (columnKey, row) => (
+          <h3>
+            {row.texter}{" "}
+            <Link
+              target="_blank"
+              to={`/app/${organizationId}/todos/other/${row.texterId}`}
+            >
+              <ActionOpenInNew
+                style={{ width: 14, height: 14, color: theme.colors.green }}
+              />
+            </Link>
+          </h3>
+        )
       },
       {
         key: "email",
@@ -106,7 +122,7 @@ export class PeopleList extends Component {
 
   updateUser = () => {
     this.setState({
-      userEdit: false
+      userEdit: null
     });
     this.props.users.refetch({
       cursor: this.state.cursor
@@ -179,7 +195,7 @@ export class PeopleList extends Component {
   };
 
   requestUserEditClose = () => {
-    this.setState({ userEdit: false });
+    this.setState({ userEdit: null });
   };
 
   handlePasswordResetClose = () => {
@@ -205,7 +221,7 @@ export class PeopleList extends Component {
       <FlatButton
         {...dataTest("editPerson")}
         label="Edit"
-        onTouchTap={() => {
+        onClick={() => {
           this.editUser(texterId);
         }}
       />
@@ -219,7 +235,7 @@ export class PeopleList extends Component {
       <FlatButton
         label="Reset Password"
         disabled={currentUser.id === texterId}
-        onTouchTap={() => {
+        onClick={() => {
           this.resetPassword(texterId);
         }}
       />

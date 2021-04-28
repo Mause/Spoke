@@ -37,6 +37,14 @@ const rootSchema = gql`
     value: String!
   }
 
+  input BulkUpdateScriptInput {
+    searchString: String!
+    replaceString: String!
+    includeArchived: Boolean!
+    campaignTitlePrefixes: [String]!
+    targetObject: [String]!
+  }
+
   input AnswerOptionInput {
     action: String
     value: String!
@@ -148,7 +156,7 @@ const rootSchema = gql`
 
   type CampaignIdAssignmentId {
     campaignId: String!
-    assignmentId: String!
+    assignmentId: String
   }
 
   input TagInput {
@@ -163,6 +171,7 @@ const rootSchema = gql`
 
   input ContactTagInput {
     id: String
+    name: String
     value: String
   }
 
@@ -262,6 +271,7 @@ const rootSchema = gql`
       campaignId: String
       queryParams: String
     ): Organization
+    resetOrganizationJoinLink(organizationId: String!): Organization
     editOrganizationRoles(
       organizationId: String!
       userId: String!
@@ -301,6 +311,10 @@ const rootSchema = gql`
       campaignContactId: String!
       noReply: Boolean
     ): CampaignContact
+    bulkUpdateScript(
+      organizationId: String!
+      findAndReplace: BulkUpdateScriptInput!
+    ): [ScriptUpdateResult]
     editCampaignContactMessageStatus(
       messageStatus: String!
       campaignContactId: String!
@@ -309,6 +323,11 @@ const rootSchema = gql`
       interactionStepIds: [String]
       campaignContactId: String!
     ): CampaignContact
+    updateFeedback(
+      assignmentId: String!
+      feedback: JSON
+      acknowledge: Boolean
+    ): Assignment
     updateContactTags(
       tags: [ContactTagInput]
       campaignContactId: String!
@@ -360,6 +379,7 @@ const rootSchema = gql`
       limit: Int!
       addToOrganizationMessagingService: Boolean
     ): JobRequest
+    deletePhoneNumbers(organizationId: ID!, areaCode: String!): JobRequest
     releaseCampaignNumbers(campaignId: ID!): Campaign!
     clearCachedOrgAndExtensionCaches(organizationId: String!): String
   }

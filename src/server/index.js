@@ -3,7 +3,7 @@ import bodyParser from "body-parser";
 import express from "express";
 import appRenderer from "./middleware/app-renderer";
 import { graphqlExpress, graphiqlExpress } from "apollo-server-express";
-import { makeExecutableSchema, addMockFunctionsToSchema } from "graphql-tools";
+import { makeExecutableSchema } from "graphql-tools";
 // ORDERING: ./models import must be imported above ./api to help circular imports
 import { createLoaders, createTablesIfNecessary, r } from "./models";
 import { resolvers } from "./api/schema";
@@ -16,11 +16,13 @@ import { log } from "../lib";
 import telemetry from "./telemetry";
 import nexmo from "./api/lib/nexmo";
 import twilio from "./api/lib/twilio";
+import { getConfig } from "./api/lib/config";
 import { seedZipCodes } from "./seeds/seed-zip-codes";
 import { setupUserNotificationObservers } from "./notifications";
-import { twiml } from "twilio";
 import { existsSync } from "fs";
 import { rawAllMethods } from "../extensions/contact-loaders";
+import herokuSslRedirect from "heroku-ssl-redirect";
+import { GraphQLError } from "graphql/error";
 
 process.on("uncaughtException", ex => {
   log.error(ex);
@@ -28,21 +30,21 @@ process.on("uncaughtException", ex => {
 });
 const DEBUG = process.env.NODE_ENV === "development";
 
-if (!process.env.SUPPRESS_SEED_CALLS) {
+if (!getConfig("SUPPRESS_SEED_CALLS", null, { truthy: 1 })) {
   seedZipCodes();
 }
 
-if (!process.env.SUPPRESS_DATABASE_AUTOCREATE) {
+if (!getConfig("SUPPRESS_DATABASE_AUTOCREATE", null, { truthy: 1 })) {
   createTablesIfNecessary().then(didCreate => {
     // seed above won't have succeeded if we needed to create first
-    if (didCreate && !process.env.SUPPRESS_SEED_CALLS) {
+    if (didCreate && !getConfig("SUPPRESS_SEED_CALLS", null, { truthy: 1 })) {
       seedZipCodes();
     }
-    if (!didCreate && !process.env.SUPPRESS_MIGRATIONS) {
+    if (!didCreate && !getConfig("SUPPRESS_MIGRATIONS", null, { truthy: 1 })) {
       r.k.migrate.latest();
     }
   });
-} else if (!process.env.SUPPRESS_MIGRATIONS) {
+} else if (!getConfig("SUPPRESS_MIGRATIONS", null, { truthy: 1 })) {
   r.k.migrate.latest();
 }
 
@@ -53,6 +55,11 @@ const port = process.env.DEV_APP_PORT || process.env.PORT;
 
 // Don't rate limit heroku
 app.enable("trust proxy");
+
+if (process.env.HEROKU_APP_NAME) {
+  // if on Heroku redirect to https if accessed via http
+  app.use(herokuSslRedirect());
+}
 
 // Serve static assets
 if (existsSync(process.env.ASSETS_DIR)) {
@@ -106,24 +113,7 @@ Object.keys(configuredIngestMethods).forEach(ingestMethodName => {
   }
 });
 
-app.post(
-  "/twilio/:orgId?",
-  twilio.headerValidator(
-    process.env.TWILIO_MESSAGE_CALLBACK_URL ||
-      global.TWILIO_MESSAGE_CALLBACK_URL
-  ),
-  wrap(async (req, res) => {
-    try {
-      await twilio.handleIncomingMessage(req.body);
-    } catch (ex) {
-      log.error(ex);
-    }
-
-    const resp = new twiml.MessagingResponse();
-    res.writeHead(200, { "Content-Type": "text/xml" });
-    res.end(resp.toString());
-  })
-);
+twilio.addServerEndpoints(app);
 
 if (process.env.NEXMO_API_KEY) {
   app.post(
@@ -152,24 +142,6 @@ if (process.env.NEXMO_API_KEY) {
     })
   );
 }
-
-app.post(
-  "/twilio-message-report",
-  twilio.headerValidator(
-    process.env.TWILIO_STATUS_CALLBACK_URL || global.TWILIO_STATUS_CALLBACK_URL
-  ),
-  wrap(async (req, res) => {
-    try {
-      const body = req.body;
-      await twilio.handleDeliveryReport(body);
-    } catch (ex) {
-      log.error(ex);
-    }
-    const resp = new twiml.MessagingResponse();
-    res.writeHead(200, { "Content-Type": "text/xml" });
-    res.end(resp.toString());
-  })
-);
 
 app.get("/logout-callback", (req, res) => {
   req.logOut();
@@ -219,7 +191,21 @@ app.use(
         // drop if this fails
         .catch(() => {})
         .then(() => {});
-      return error;
+
+      if (process.env.SHOW_SERVER_ERROR || process.env.DEBUG) {
+        if (error instanceof GraphQLError) {
+          return error;
+        }
+        return new GraphQLError(error.message);
+      }
+
+      return new GraphQLError(
+        error &&
+        error.originalError &&
+        error.originalError.code === "UNAUTHORIZED"
+          ? "UNAUTHORIZED"
+          : "Internal server error"
+      );
     }
   }))
 );

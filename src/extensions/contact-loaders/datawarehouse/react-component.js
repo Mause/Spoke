@@ -2,12 +2,14 @@ import type from "prop-types";
 import React from "react";
 import RaisedButton from "material-ui/RaisedButton";
 import GSForm from "../../../components/forms/GSForm";
+import GSTextField from "../../../components/forms/GSTextField";
+import GSSubmitButton from "../../../components/forms/GSSubmitButton";
 import Form from "react-formal";
 import { ListItem, List } from "material-ui/List";
 import CampaignFormSectionHeading from "../../../components/CampaignFormSectionHeading";
 import theme from "../../../styles/theme";
 import { StyleSheet, css } from "aphrodite";
-import yup from "yup";
+import * as yup from "yup";
 
 const innerStyles = {
   button: {
@@ -38,9 +40,18 @@ const styles = StyleSheet.create({
 });
 
 export class CampaignContactsForm extends React.Component {
-  state = {
-    formValues: null
-  };
+  constructor(props) {
+    super(props);
+    const { lastResult } = props;
+    let cur = {};
+    if (lastResult && lastResult.reference) {
+      cur = JSON.parse(lastResult.reference);
+    }
+    console.log("datawarehouse", lastResult, props);
+    this.state = {
+      contactSql: cur.contactSql || ""
+    };
+  }
 
   validateSql = () => {
     const errors = [];
@@ -54,6 +65,11 @@ export class CampaignContactsForm extends React.Component {
     ) {
       errors.push(
         "Spoke currently does not support LIMIT statements of higher than 10000 (no limit is fine, though)"
+      );
+    }
+    if (!/ORDER BY/i.test(sql)) {
+      errors.push(
+        "An ORDER BY statement is required to ensure loading all the contacts."
       );
     }
     const requiredFields = ["first_name", "last_name", "cell"];
@@ -82,20 +98,34 @@ export class CampaignContactsForm extends React.Component {
 
   render() {
     const { contactSqlError } = this.state;
+    const { lastResult } = this.props;
+    let results = {};
+    if (lastResult && lastResult.result) {
+      results = JSON.parse(lastResult.result);
+    }
     return (
       <div>
-        {!this.props.jobResultMessage ? (
-          ""
-        ) : (
+        {results.errors ? (
           <div>
-            <CampaignFormSectionHeading title="Job Outcome" />
-            <div>{this.props.jobResultMessage}</div>
+            <h4 style={{ color: theme.colors.red }}>Previous Errors</h4>
+            <List>
+              {results.errors.map(e => (
+                <ListItem
+                  key={e}
+                  primaryText={e}
+                  leftIcon={this.props.icons.error}
+                />
+              ))}
+            </List>
           </div>
+        ) : (
+          ""
         )}
         <GSForm
           schema={yup.object({
             contactSql: yup.string()
           })}
+          defaultValue={this.state}
           onSubmit={formValues => {
             // sets values locally
             this.setState({ ...formValues });
@@ -110,6 +140,10 @@ export class CampaignContactsForm extends React.Component {
               in contacts. The SQL requires some constraints:
               <ul>
                 <li>Start the query with "SELECT"</li>
+                <li>
+                  Finish with a required "ORDER BY" -- if there is not a
+                  reliable ordering then not all contacts may load.
+                </li>
                 <li>Do not include a trailing (or any) semicolon</li>
                 <li>
                   Three columns are necessary:
@@ -130,9 +164,14 @@ export class CampaignContactsForm extends React.Component {
                   sometimes.
                 </li>
                 <li>Other columns will be added to the customFields</li>
+                <li>
+                  During processing %&rsquo;s are not percentage complete, but
+                  every 10K contacts
+                </li>
               </ul>
             </div>
             <Form.Field
+              as={GSTextField}
               id="contact-sql"
               name="contactSql"
               type="textarea"
@@ -156,8 +195,8 @@ export class CampaignContactsForm extends React.Component {
               ""
             )}
           </div>
-          <Form.Button
-            type="submit"
+          <Form.Submit
+            as={GSSubmitButton}
             disabled={this.props.saveDisabled}
             label={this.props.saveLabel}
           />

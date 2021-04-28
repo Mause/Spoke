@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Form from "react-formal";
-import yup from "yup";
+import * as yup from "yup";
 import gql from "graphql-tag";
 import { StyleSheet, css } from "aphrodite";
 import Dialog from "material-ui/Dialog";
@@ -9,6 +9,7 @@ import FlatButton from "material-ui/FlatButton";
 
 import loadData from "../../containers/hoc/load-data";
 import GSForm from "../../components/forms/GSForm";
+import GSTextField from "../../components/forms/GSTextField";
 import SendButton from "../../components/SendButton";
 
 const styles = StyleSheet.create({
@@ -24,7 +25,8 @@ class MessageResponse extends Component {
     this.state = {
       messageText: "",
       isSending: false,
-      sendError: ""
+      sendError: "",
+      doneFirstClick: false
     };
 
     this.handleCloseErrorDialog = this.handleCloseErrorDialog.bind(this);
@@ -43,14 +45,21 @@ class MessageResponse extends Component {
   handleMessageFormChange = ({ messageText }) => this.setState({ messageText });
 
   handleMessageFormSubmit = async ({ messageText }) => {
-    const { campaignContactId } = this.props.conversation;
-    const message = this.createMessageToContact(messageText);
     if (this.state.isSending) {
       return; // stops from multi-send
     }
+
+    if (window.TEXTER_TWOCLICK && !this.state.doneFirstClick) {
+      this.setState({ doneFirstClick: true }); // Enforce TEXTER_TWOCLICK
+      return;
+    }
+
+    const { campaignContactId } = this.props.conversation;
+    const message = this.createMessageToContact(messageText);
+
     this.setState({ isSending: true });
 
-    const finalState = { isSending: false };
+    const finalState = { isSending: false, doneFirstClick: false };
     try {
       const response = await this.props.mutations.sendMessage(
         message,
@@ -82,7 +91,7 @@ class MessageResponse extends Component {
         .max(window.MAX_MESSAGE_LENGTH)
     });
 
-    const { messageText, isSending } = this.state;
+    const { messageText, isSending, doneFirstClick } = this.state;
     const isSendDisabled = isSending || messageText.trim() === "";
 
     const errorActions = [
@@ -92,7 +101,6 @@ class MessageResponse extends Component {
         onClick={this.handleCloseErrorDialog}
       />
     ];
-
     return (
       <div className={css(styles.messageField)}>
         <GSForm
@@ -114,10 +122,12 @@ class MessageResponse extends Component {
               <SendButton
                 onFinalTouchTap={this.handleClickSendMessageButton}
                 disabled={isSendDisabled}
+                doneFirstClick={doneFirstClick}
               />
             </div>
             <div style={{ marginRight: "120px" }}>
               <Form.Field
+                as={GSTextField}
                 name="messageText"
                 label="Send a response"
                 multiLine
